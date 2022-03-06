@@ -36,12 +36,12 @@ func CreateNewNotifier(endpoint string, maxWorker int, maxQueue int) *Notifier {
 	}
 }
 
-func (n Notifier) Notify(messages []string) (bool, []Response) {
+func (n *Notifier) Notify(messages []string) (bool, []Response) {
 	start := time.Now()
 	defer func() { fmt.Println(time.Since(start)) }()
 
 	// Initiate the dispatcher
-	dispatcher := newDispatcher(n.maxWorker, &n.jobQueue, &n.responseQueue)
+	dispatcher := newDispatcher(n.maxWorker, n.jobQueue, n.responseQueue)
 	dispatcher.run()
 
 	// Fill the JobQueue

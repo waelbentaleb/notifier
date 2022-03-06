@@ -10,7 +10,7 @@ import (
 var (
 	endpoint  = "https://waelbentaleb.free.beeceptor.com/my/api/path"
 	maxWorker = 1500
-	maxQueue  = 1500
+	maxQueue  = 2000
 )
 
 func main() {

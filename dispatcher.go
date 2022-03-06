@@ -4,11 +4,11 @@ type Dispatcher struct {
 	// A pool of workers channels that are registered with the dispatcher
 	workerPool    chan chan Job
 	maxWorkers    int
-	jobQueue      *chan Job
-	responseQueue *chan Response
+	jobQueue      chan Job
+	responseQueue chan Response
 }
 
-func newDispatcher(maxWorkers int, jobQueue *chan Job, responseQueue *chan Response) *Dispatcher {
+func newDispatcher(maxWorkers int, jobQueue chan Job, responseQueue chan Response) *Dispatcher {
 	return &Dispatcher{
 		workerPool:    make(chan chan Job, maxWorkers),
 		maxWorkers:    maxWorkers,
@@ -30,7 +30,7 @@ func (d *Dispatcher) run() {
 func (d *Dispatcher) dispatch() {
 	for {
 		select {
-		case job := <-*d.jobQueue:
+		case job := <-d.jobQueue:
 			// a job request has been received
 			go func(job Job) {
 				// try to obtain a worker job channel that is available.

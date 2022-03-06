@@ -5,10 +5,10 @@ type Worker struct {
 	workerPool    chan chan Job
 	jobChannel    chan Job
 	quit          chan bool
-	responseQueue *chan Response
+	responseQueue chan Response
 }
 
-func newWorker(workerPool chan chan Job, responseQueue *chan Response) Worker {
+func newWorker(workerPool chan chan Job, responseQueue chan Response) Worker {
 	return Worker{
 		workerPool:    workerPool,
 		jobChannel:    make(chan Job),
@@ -29,7 +29,7 @@ func (w Worker) start() {
 			case job := <-w.jobChannel:
 				// we have received a work request.
 				err := job.postNotification()
-				*w.responseQueue <- Response{job.id, err}
+				w.responseQueue <- Response{job.id, err}
 			}
 		}
 	}()
