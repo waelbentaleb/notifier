@@ -17,15 +17,23 @@ func main() {
 	var messages []string
 
 	// TODO Optimizing reading and sending
-	// generate random messages
-	for i := 0; i < 10000; i++ {
-		messages = append(messages, fmt.Sprintf(`{"data": "message %v"}`, i))
+	// Generate random messages
+	for i := 0; i < 100000; i++ {
+		messages = append(messages, fmt.Sprintf("message %d", i))
 	}
 
-	notificationService := notifier.CreateNewNotifier(endpoint, maxWorker, maxQueue)
-	success, failedResponses := notificationService.Notify(messages)
-
-	if !success {
-		log.Printf("%d failed responses\n", len(failedResponses))
+	// Callback that receive a success boolean and an array with failed requests if they exist
+	notifierCallback := func(failedRequests []notifier.FailedRequest) {
+		if failedRequests != nil {
+			log.Printf("You have %d failed requests\n", len(failedRequests))
+		}
 	}
+
+	notificationService := notifier.CreateNewNotifier(endpoint, maxWorker, maxQueue, messages, notifierCallback)
+	notificationService.Notify()
+
+	log.Println("We are good BOSS !!")
+
+	// Simulate server listening with an infinite wait
+	select {}
 }

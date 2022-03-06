@@ -13,12 +13,12 @@ type Job struct {
 	endpoint string
 }
 
-func (job Job) postNotification() error {
+func (job Job) postNotification() (int, error) {
 	jsonData := []byte(job.message)
 
 	request, err := http.NewRequest("POST", job.endpoint, bytes.NewBuffer(jsonData))
 	if err != nil {
-		return err
+		return http.StatusBadRequest, err
 	}
 
 	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
@@ -26,10 +26,9 @@ func (job Job) postNotification() error {
 
 	response, err := client.Do(request)
 	if err != nil {
-		return err
+		return http.StatusBadRequest, err
 	}
 	defer response.Body.Close()
 
-	//log.Println(p.message)
-	return nil
+	return response.StatusCode, nil
 }

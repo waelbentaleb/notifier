@@ -16,66 +16,85 @@ type Notifier struct {
 	// jobQueue A buffered channel that we can send work requests on.
 	jobQueue chan Job
 
-	// responseQueue A buffered channel that we can send request results on.
-	responseQueue chan Response
+	// jobResponsesChannel A buffered channel to send job responses on.
+	jobResponsesChannel chan JobResponse
+
+	// messages represents an array of messages to be sent
+	messages []string
+
+	// callback is function to be called when all messages had responses
+	callback func([]FailedRequest)
 }
 
-// Response represents a single query response with query id and an error if exist
-type Response struct {
+type FailedRequest struct {
 	id  int
 	err error
 }
 
 // CreateNewNotifier Create and initialise Notifier struct
-func CreateNewNotifier(endpoint string, maxWorker int, maxQueue int) *Notifier {
+func CreateNewNotifier(endpoint string, maxWorker int, maxQueue int, messages []string, callback func([]FailedRequest)) *Notifier {
 	return &Notifier{
-		endpoint:      endpoint,
-		maxWorker:     maxWorker,
-		jobQueue:      make(chan Job, maxQueue),
-		responseQueue: make(chan Response, maxQueue),
+		endpoint:            endpoint,
+		maxWorker:           maxWorker,
+		jobQueue:            make(chan Job, maxQueue),
+		jobResponsesChannel: make(chan JobResponse, maxQueue),
+		messages:            messages,
+		callback:            callback,
 	}
 }
 
-func (n *Notifier) Notify(messages []string) (bool, []Response) {
-	start := time.Now()
-	defer func() { fmt.Println(time.Since(start)) }()
+func (n *Notifier) Notify() {
+	go func() {
+		start := time.Now()
+		defer func() { fmt.Println(time.Since(start)) }()
 
-	// Initiate the dispatcher
-	dispatcher := newDispatcher(n.maxWorker, n.jobQueue, n.responseQueue)
-	dispatcher.run()
+		// Initiate the dispatcher
+		dispatcher := newDispatcher(n.maxWorker, n.jobQueue, n.jobResponsesChannel)
+		dispatcher.run()
 
-	// Fill the JobQueue
-	for i, message := range messages {
-		job := Job{
-			id:       i,
-			message:  message,
-			endpoint: n.endpoint,
+		// Fill the JobQueue
+		for i, message := range n.messages {
+			job := Job{
+				id:       i,
+				message:  `{"data": "` + message + `"}`,
+				endpoint: n.endpoint,
+			}
+			n.jobQueue <- job
 		}
 
-		n.jobQueue <- job
-	}
+		// Total number of jobs based on messages size
+		jobCount := len(n.messages)
 
-	messagesLength := len(messages)
-	responsesLength := 0
+		// Retrieve job responses and return failures to the callback
+		failedRequests := handleJobResponses(n.jobResponsesChannel, jobCount)
+		n.callback(failedRequests)
+	}()
+}
 
-	var failedResponses []Response
+func handleJobResponses(jobResponsesChannel chan JobResponse, jobCount int) []FailedRequest {
+	var failedRequests []FailedRequest
+	responsesCount := 0
 
-	// Retrieve workers result
-	for response := range n.responseQueue {
+	for response := range jobResponsesChannel {
+		// Update responses count
+		responsesCount++
 
 		// Save failed requests
 		if response.err != nil {
-			failedResponses = append(failedResponses, response)
+			failedRequests = append(failedRequests, FailedRequest{response.id, response.err})
 		}
 
-		responsesLength++
-		log.Println(messagesLength, responsesLength)
+		log.Println(jobCount, responsesCount)
 
-		// Wait to receive all results before killing main goroutine
-		if responsesLength == messagesLength {
+		// Wait to receive all job responses before breaking
+		if responsesCount == jobCount {
 			break
 		}
 	}
 
-	return len(failedResponses) == 0, failedResponses
+	if len(failedRequests) == 0 {
+		return nil
+	}
+
+	return failedRequests
 }

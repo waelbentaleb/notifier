@@ -2,18 +2,25 @@ package notifier
 
 // Worker represents the worker that executes the job
 type Worker struct {
-	workerPool    chan chan Job
-	jobChannel    chan Job
-	quit          chan bool
-	responseQueue chan Response
+	workerPool          chan chan Job
+	jobChannel          chan Job
+	quit                chan bool
+	jobResponsesChannel chan JobResponse
 }
 
-func newWorker(workerPool chan chan Job, responseQueue chan Response) Worker {
+// JobResponse represents a single query response with query id and an error if exist
+type JobResponse struct {
+	id         int
+	statusCode int
+	err        error
+}
+
+func newWorker(workerPool chan chan Job, jobResponsesChannel chan JobResponse) Worker {
 	return Worker{
-		workerPool:    workerPool,
-		jobChannel:    make(chan Job),
-		quit:          make(chan bool),
-		responseQueue: responseQueue,
+		workerPool:          workerPool,
+		jobChannel:          make(chan Job),
+		quit:                make(chan bool),
+		jobResponsesChannel: jobResponsesChannel,
 	}
 }
 
@@ -28,8 +35,8 @@ func (w Worker) start() {
 			select {
 			case job := <-w.jobChannel:
 				// we have received a work request.
-				err := job.postNotification()
-				w.responseQueue <- Response{job.id, err}
+				statusCode, err := job.postNotification()
+				w.jobResponsesChannel <- JobResponse{job.id, statusCode, err}
 			}
 		}
 	}()
