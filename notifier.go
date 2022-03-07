@@ -1,11 +1,5 @@
 package notifier
 
-import (
-	"fmt"
-	"log"
-	"time"
-)
-
 type Notifier struct {
 	// endpoint represents the post url
 	endpoint string
@@ -19,9 +13,6 @@ type Notifier struct {
 	// jobResponsesChannel A buffered channel to send job responses on.
 	jobResponsesChannel chan JobResponse
 
-	// messages represents an array of messages to be sent
-	messages []string
-
 	// callback is function to be called when all messages had responses
 	callback func([]FailedRequest)
 }
@@ -32,28 +23,27 @@ type FailedRequest struct {
 }
 
 // CreateNewNotifier Create and initialise Notifier struct
-func CreateNewNotifier(endpoint string, maxWorker int, maxQueue int, messages []string, callback func([]FailedRequest)) *Notifier {
+func CreateNewNotifier(endpoint string, maxWorker int, maxQueue int, callback func([]FailedRequest)) *Notifier {
 	return &Notifier{
 		endpoint:            endpoint,
 		maxWorker:           maxWorker,
 		jobQueue:            make(chan Job, maxQueue),
 		jobResponsesChannel: make(chan JobResponse, maxQueue),
-		messages:            messages,
 		callback:            callback,
 	}
 }
 
-func (n *Notifier) Notify() {
+func (n *Notifier) Notify(messages []string) {
 	go func() {
-		start := time.Now()
-		defer func() { fmt.Println(time.Since(start)) }()
+		//start := time.Now()
+		//defer func() { fmt.Println(time.Since(start)) }()
 
 		// Initiate the dispatcher
 		dispatcher := newDispatcher(n.maxWorker, n.jobQueue, n.jobResponsesChannel)
 		dispatcher.run()
 
 		// Fill the JobQueue
-		for i, message := range n.messages {
+		for i, message := range messages {
 			job := Job{
 				id:       i,
 				message:  `{"data": "` + message + `"}`,
@@ -63,7 +53,7 @@ func (n *Notifier) Notify() {
 		}
 
 		// Total number of jobs based on messages size
-		jobCount := len(n.messages)
+		jobCount := len(messages)
 
 		// Retrieve job responses and return failures to the callback
 		failedRequests := handleJobResponses(n.jobResponsesChannel, jobCount)
@@ -83,8 +73,6 @@ func handleJobResponses(jobResponsesChannel chan JobResponse, jobCount int) []Fa
 		if response.err != nil {
 			failedRequests = append(failedRequests, FailedRequest{response.id, response.err})
 		}
-
-		log.Println(jobCount, responsesCount)
 
 		// Wait to receive all job responses before breaking
 		if responsesCount == jobCount {
