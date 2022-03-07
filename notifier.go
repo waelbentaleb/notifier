@@ -35,9 +35,6 @@ func CreateNewNotifier(endpoint string, maxWorker int, maxQueue int, callback fu
 
 func (n *Notifier) Notify(messages []string) {
 	go func() {
-		//start := time.Now()
-		//defer func() { fmt.Println(time.Since(start)) }()
-
 		// Initiate the dispatcher
 		dispatcher := newDispatcher(n.maxWorker, n.jobQueue, n.jobResponsesChannel)
 		dispatcher.run()

@@ -20,8 +20,9 @@ func (job Job) postNotification() (int, error) {
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
-
 	request.Header.Set("Content-Type", "application/json; charset=UTF-8")
+
+	// TODO timeout can be an argument with default value
 	client := &http.Client{Timeout: 10 * time.Second}
 
 	response, err := client.Do(request)

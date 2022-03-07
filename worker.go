@@ -24,8 +24,7 @@ func newWorker(workerPool chan chan Job, jobResponsesChannel chan JobResponse) W
 	}
 }
 
-// Start method starts the run loop for the worker, listening for a quit channel in
-// case we need to stop it
+// Start method starts the run loop for the worker
 func (w Worker) start() {
 	go func() {
 		for {
