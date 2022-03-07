@@ -4,7 +4,6 @@ package notifier
 type Worker struct {
 	workerPool          chan chan Job
 	jobChannel          chan Job
-	quit                chan bool
 	jobResponsesChannel chan JobResponse
 }
 
@@ -19,7 +18,6 @@ func newWorker(workerPool chan chan Job, jobResponsesChannel chan JobResponse) W
 	return Worker{
 		workerPool:          workerPool,
 		jobChannel:          make(chan Job),
-		quit:                make(chan bool),
 		jobResponsesChannel: jobResponsesChannel,
 	}
 }
